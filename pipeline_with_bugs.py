@@ -118,8 +118,12 @@ def clean_biometry(biometry):
 
 
 def merge_datasets(studies, biometry):
+
+    studies["study_id"]= studies["study_id"].astype(str).str.upper().str.strip().str.replace("-","").str.replace("STU","STU-")
+    biometry["study_id"]= biometry["study_id"].astype(str).str.upper().str.strip().str.replace("-","").str.replace("STU","STU-")
+
     """Join clinical metadata with the corresponding imaging measurements."""
-    merged = studies.merge(biometry, on="study_id", how="inner")
+    merged = studies.merge(biometry, on="study_id", how="left")
     return merged
 
 
@@ -178,27 +182,44 @@ def main():
     studies, biometry = load_data(STUDIES_PATH, BIOMETRY_PATH)
     print(f"Loaded {len(studies)} study records and {len(biometry)} biometry records.")
 
+    studies=studies.drop_duplicates()
+    biometry=biometry.drop_duplicates()
+
+
     studies = clean_studies(studies)
     biometry = clean_biometry(biometry)
 
-    merged = merge_datasets(studies, biometry)
-    print(f"Merged dataset has {len(merged)} rows.")
+    print("After Deduplication")
+    print(f"Loaded {len(studies)} study records and {len(biometry)} biometry records.")
 
-    clinic_thresholds = pd.DataFrame(
-        {
-            "clinic_id": ["CLN-01", "CLN-02", "CLN-03", "CLN-04", "CLN-05", "CLN-06", "CLN-07"],
-            "min_ga_weeks": [18, 20, 18, 22, 20, 18, 20],
-        }
-    )
-    merged = flag_high_risk(merged, clinic_thresholds)
+    studies.to_csv("cleanedStudies.csv",index=False)
+    biometry.to_csv("cleanedBiometry.csv",index=False)
 
-    summary = summarize_by_clinic(merged)
-    print("\nClinic summary:")
-    print(summary.to_string(index=False))
+    # duplicates=studies[studies["study_id"].duplicated(keep=False)].sort_values("study_id")
+    # print(duplicates)
 
-    merged.to_csv("analysis_ready.csv", index=False)
-    plot_clinic_summary(summary)
-    print("\nWrote analysis_ready.csv and clinic_summary.png")
+    # duplicates_rows=biometry[biometry["study_id"].duplicated(keep=False)].sort_values("study_id")
+    # print(duplicates_rows)
+
+
+    # merged = merge_datasets(studies, biometry)
+    # print(f"Merged dataset has {len(merged)} rows.")
+
+    # clinic_thresholds = pd.DataFrame(
+    #     {
+    #         "clinic_id": ["CLN-01", "CLN-02", "CLN-03", "CLN-04", "CLN-05", "CLN-06", "CLN-07"],
+    #         "min_ga_weeks": [18, 20, 18, 22, 20, 18, 20],
+    #     }
+    # )
+    # merged = flag_high_risk(merged, clinic_thresholds)
+
+    # summary = summarize_by_clinic(merged)
+    # print("\nClinic summary:")
+    # print(summary.to_string(index=False))
+
+    # merged.to_csv("analysis_ready.csv", index=False)
+    # plot_clinic_summary(summary)
+    # print("\nWrote analysis_ready.csv and clinic_summary.png")
 
 
 if __name__ == "__main__":
